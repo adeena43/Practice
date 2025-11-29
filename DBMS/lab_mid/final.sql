@@ -1,3 +1,5 @@
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------PL-SQL---------------------------------------------------------------------------------------------------
 set serveroutput on;
 declare
 sec_name varchar2(20) := 'Sec-A';
@@ -311,8 +313,8 @@ dbms_output.put_line('Years of service: '||employee.year_of_service());
 
 end;
 
-
-------------------------------------------------------------- TRIGGERS -------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------ TRIGGERS ----------------------------------------------------------------------------------------------
 create or replace trigger insert_data
 before insert on student
 for each row
@@ -431,3 +433,36 @@ end;
 create table ddl2_check(h_name varchar2(20));
 
 select * from schema_audit;
+create or replace view emp_view as
+select emp_id, emp_name from employees;
+
+create or replace trigger view_insert
+instead of insert on emp_view
+for each row
+begin
+    insert into employees(emp_id, emp_name)
+    values(:new.emp_id, :new.emp_name);
+end;
+/
+
+-- Lab -09 (Triggers in PL-SQL)
+CREATE OR REPLACE TRIGGER validate_email
+BEFORE INSERT ON student
+FOR EACH ROW
+BEGIN
+   IF NOT REGEXP_LIKE(:NEW.email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Invalid Email Format');
+   END IF;
+END;
+/
+CREATE TABLE system_logs (
+    message VARCHAR2(100),
+    log_time DATE
+);
+
+CREATE OR REPLACE TRIGGER startup_log
+AFTER STARTUP ON DATABASE
+BEGIN
+    INSERT INTO system_logs VALUES ('Database started at', SYSDATE);
+END;
+/
