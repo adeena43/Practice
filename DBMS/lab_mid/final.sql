@@ -466,3 +466,152 @@ BEGIN
     INSERT INTO system_logs VALUES ('Database started at', SYSDATE);
 END;
 /
+create or replace view emp_view as
+select emp_id, emp_name from employees;
+
+create or replace trigger view_insert
+instead of insert on emp_view
+for each row
+begin
+    insert into employees(emp_id, emp_name)
+    values(:new.emp_id, :new.emp_name);
+end;
+/
+
+-- Lab -09 (Triggers in PL-SQL)
+CREATE OR REPLACE TRIGGER validate_email
+BEFORE INSERT ON student
+FOR EACH ROW
+BEGIN
+   IF NOT REGEXP_LIKE(:NEW.email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Invalid Email Format');
+   END IF;
+END;
+/
+CREATE TABLE system_logs (
+    message VARCHAR2(100),
+    log_time DATE
+);
+
+CREATE OR REPLACE TRIGGER startup_log
+AFTER STARTUP ON DATABASE
+BEGIN
+    INSERT INTO system_logs VALUES ('Database started at', SYSDATE);
+END;
+/
+
+CREATE OR REPLACE TRIGGER tr_superheroes
+BEFORE INSERT OR DELETE OR UPDATE ON superheroes
+FOR EACH ROW
+ENABLE
+DECLARE
+v_user VARCHAR2(15);
+BEGIN
+SELECT
+user INTO v_user FROM dual;
+IF INSERTING THEN
+DBMS_OUTPUT.PUT_LINE('one line inserted by '||v_user);
+ELSIF DELETING THEN
+DBMS_OUTPUT.PUT_LINE('one line Deleted by '||v_user);
+ELSIF UPDATING THEN
+DBMS_OUTPUT.PUT_LINE('one line Updated by '||v_user);
+END IF;
+END;
+
+/
+
+CREATE TABLE sh_audit (
+    new_name   VARCHAR2(100),
+    old_name   VARCHAR2(100),
+    user_name  VARCHAR2(30),
+    entry_date VARCHAR2(30),
+    operation  VARCHAR2(10)
+);
+
+CREATE OR REPLACE TRIGGER superheroes_audit
+BEFORE INSERT OR DELETE OR UPDATE ON superheroes
+FOR EACH ROW
+DECLARE
+    v_user VARCHAR2(30);
+    v_date VARCHAR2(30);
+BEGIN
+    SELECT user, TO_CHAR(sysdate, 'DD/MON/YYYY HH24:MI:SS') 
+    INTO v_user, v_date
+    FROM dual;
+
+    IF INSERTING THEN
+        INSERT INTO sh_audit (new_name, old_name, user_name, entry_date, operation)
+        VALUES (:NEW.SH_NAME, NULL, v_user, v_date, 'Insert');
+    ELSIF DELETING THEN
+        INSERT INTO sh_audit (new_name, old_name, user_name, entry_date, operation)
+        VALUES (NULL, :OLD.SH_NAME, v_user, v_date, 'Delete');
+    ELSIF UPDATING THEN
+        INSERT INTO sh_audit (new_name, old_name, user_name, entry_date, operation)
+        VALUES (:NEW.SH_NAME, :OLD.SH_NAME, v_user, v_date, 'Update');
+    END IF;
+END;
+/
+-- Datbase event triggers: (logon/logoff, startup/shutdown)
+create or replace trigger hr_logon_audit
+after logon on schema
+begin
+    insert into hr_event_audit values(
+        'LOGON', sysdate, to_char(sysdate, 'hh24:mi:ss'), NULL, NULL
+    );
+    
+end;
+/
+
+CREATE OR REPLACE TRIGGER log_off_audit
+BEFORE LOGOFF ON SCHEMA
+BEGIN
+    INSERT INTO hr_evnt_audit VALUES('LOGOFF', NULL, NULL, SYSDATE, TO_CHAR(sysdate,'hh24:mi:ss'));
+END;
+/
+
+
+create or replace trigger startup_audit
+after startup on database
+begin
+    insert into startup_audit 
+    values('STARTUP', sysdate, to_char(sysdate,'hh24:mi:ss'));
+end;
+/
+create or replace trigger shutdown_audit
+before shutdown on database
+begin
+    insert into shutdown_audit
+    values('SHUTDOWN', sysdate, to_char(sysdate,'hh24:mi:ss'));
+end;
+/
+
+CREATE TABLE trainer(full_name VARCHAR2(20));
+CREATE TABLE subject(subject_name VARCHAR2(15));
+
+CREATE VIEW db_lab_09_view AS
+SELECT full_name, subject_name FROM trainer, subject;
+
+CREATE OR REPLACE TRIGGER tr_Io_Insert
+INSTEAD OF INSERT ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+    INSERT INTO trainer(full_name) VALUES(:NEW.full_name);
+    INSERT INTO subject(subject_name) VALUES(:NEW.subject_name);
+END;
+/
+CREATE OR REPLACE TRIGGER io_update
+INSTEAD OF UPDATE ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+    UPDATE trainer SET full_name = :NEW.full_name WHERE full_name = :OLD.full_name;
+    UPDATE subject SET subject_name = :NEW.subject_name WHERE subject_name = :OLD.subject_name;
+END;
+/
+CREATE OR REPLACE TRIGGER io_delete
+INSTEAD OF DELETE ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+    DELETE FROM trainer WHERE full_name = :OLD.full_name;
+    DELETE FROM subject WHERE subject_name = :OLD.subject_name;
+END;
+/
