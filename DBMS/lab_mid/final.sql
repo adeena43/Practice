@@ -710,3 +710,55 @@ commit;
 end if;
 end;
 
+---------------------------------------------------------------scenario: ATM transactions -----------------------------------------------------------------------------
+-- Enable output to see messages
+SET SERVEROUTPUT ON;
+
+-- Assume customer table exists:
+-- customer(customer_id, name, balance)
+-- Assume atm_transaction table exists:
+-- atm_transaction(transaction_id, customer_id, amount, transaction_type, transaction_date)
+
+-- Insert a sample customer if not exists
+INSERT INTO customer (customer_id, name, balance)
+VALUES (101, 'Alice', 1000);
+
+COMMIT;
+
+-- Withdrawal PL/SQL block
+DECLARE
+    v_customer_id   NUMBER := 101;       -- Customer ID
+    v_withdraw_amt  NUMBER := 500;       -- Amount to withdraw
+    v_balance       NUMBER;              -- Current balance
+BEGIN
+    -- Step 1: Get current balance
+    SELECT balance 
+    INTO v_balance
+    FROM customer
+    WHERE customer_id = v_customer_id;
+
+    -- Step 2: Check if balance is sufficient
+    IF v_balance < v_withdraw_amt THEN
+        DBMS_OUTPUT.PUT_LINE('Insufficient balance. Transaction cancelled.');
+    ELSE
+        -- Step 3: Deduct money from customer
+        UPDATE customer
+        SET balance = balance - v_withdraw_amt
+        WHERE customer_id = v_customer_id;
+
+        -- Savepoint after deduction
+        SAVEPOINT money_deducted;
+
+        -- Step 4: Log transaction
+        INSERT INTO atm_transaction(transaction_id, customer_id, amount, transaction_type, transaction_date)
+        VALUES (1, v_customer_id, v_withdraw_amt, 'withdraw', SYSDATE);
+
+        -- Savepoint after logging
+        SAVEPOINT transaction_logged;
+
+        -- Step 5: Commit transaction
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Withdrawal successful!');
+    END IF;
+END;
+/
