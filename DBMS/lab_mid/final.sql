@@ -615,3 +615,98 @@ BEGIN
     DELETE FROM subject WHERE subject_name = :OLD.subject_name;
 END;
 /
+-------------------------------------------------------------------------------- TRANSACTIONS ------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+create table worker(
+    worker_id number primary key,
+    worker_name varchar2(50),
+    salary number
+);
+
+insert into worker values(1, 'amir', 5000);
+
+select * from worker;
+
+update worker set salary = 50000 where worker_id = 1;
+commit;
+rollback;
+
+set transaction name 'testing';
+
+insert into worker values(2, 'Muneeb', 2000);
+savepoint sp1;
+
+UPDATE worker SET salary = 6000 WHERE worker_name='Muneeb';
+SAVEPOINT sp2;
+
+select * from worker;
+
+rollback to savepoint sp1;
+
+commit;
+
+set autocommit on;
+
+INSERT INTO worker VALUES (3, 'FAST-NU', 5000);
+
+rollback;
+
+set autocommit off;
+
+rollback;
+
+
+
+-----------------------------------------------Scenario 1-----------------------------------------
+-- 1. Product table
+CREATE TABLE product (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) NOT NULL
+);
+
+-- 2. Inventory table
+CREATE TABLE inventory (
+    inventory_id INT PRIMARY KEY,
+    product_id INT NOT NULL,
+    stock INT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES product(product_id)
+);
+
+-- 3. Orders table
+CREATE or replace table orders (
+    order_id INT PRIMARY KEY,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES product(product_id)
+);
+
+start transaction;
+
+insert into product values (101, 'Laptop', 1200);
+
+savepoint product_added;
+
+insert into inverntory values(product_id, stock);
+savepoint inventory_added;
+
+declare
+orderqty int;
+
+begin
+set orderqty := 60;
+
+update inventory
+set stock = stock = orderqty
+where product_id = 101;
+
+if (select stock from inventory where product_id = 101) < 0 then
+    rollback to savepoint inventory_added
+else
+    INSERT INTO orders(order_id, product_id, quantity)
+    VALUES (1001, 101, order_quantity);
+commit;
+end if;
+end;
+
