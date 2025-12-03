@@ -1225,3 +1225,58 @@ begin
     :new.last_updated := sysdate;
     
 end;
+----------------------------------------------------------- Ques: 03 --------------------------------------------------------------------------
+-- 1. Create object type ORDER_ITEM (named as per requirement, not product_type)
+CREATE OR REPLACE TYPE ORDER_ITEM AS OBJECT(
+    item_name VARCHAR2(50),
+    quantity NUMBER,
+    price FLOAT,
+    
+    -- Member function to calculate total cost with discount
+    MEMBER FUNCTION total_cost RETURN FLOAT
+);
+/
+
+-- 2. Create type body for ORDER_ITEM
+CREATE OR REPLACE TYPE BODY ORDER_ITEM AS 
+    MEMBER FUNCTION total_cost RETURN FLOAT IS
+        v_total FLOAT;
+    BEGIN
+        -- Calculate base cost
+        v_total := self.quantity * self.price;
+        
+        -- Apply 5% discount if quantity > 5
+        IF self.quantity > 5 THEN
+            v_total := v_total * 0.95; -- 5% discount
+        END IF;
+        
+        RETURN v_total;
+    END;
+END;
+/
+
+-- 3. Create object table to store multiple order items
+CREATE TABLE order_items_table OF ORDER_ITEM;
+
+-- Insert sample data (corrected INSERT statements)
+INSERT INTO order_items_table VALUES (ORDER_ITEM('chocolate', 10, 100));
+INSERT INTO order_items_table VALUES (ORDER_ITEM('biscuit', 2, 30));
+INSERT INTO order_items_table VALUES (ORDER_ITEM('toffees', 15, 5));
+
+-- 4. PL/SQL block to process orders
+declare     
+    v_price float;
+    v_highest float:=0;
+    
+begin
+    for order_rec in (select * from order_items_table) loop
+        v_price := order_rec.total_cost();
+        
+        if v_price > v_highest then
+            v_highest := v_price;
+        end if;
+        
+    end loop;
+end;
+
+
