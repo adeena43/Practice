@@ -1280,3 +1280,134 @@ begin
 end;
 
 
+-------------------------------------------------------------------ppr mongodb questin ------------------------------------------------------
+--employees wihtout bonus
+db.employees.find({ 
+    bonus: { $eq: 0 } 
+}).pretty();
+
+
+-- Top 3 Highest-Paid HR Employees
+db.employees.find({ 
+    department: "HR" 
+}).sort({ 
+    salary: -1 
+}).limit(3).pretty();
+
+-- Increase Salary by 10% for Recent Active
+db.employees.updateMany(
+    { 
+        lastActive: { 
+            $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) 
+        } 
+    },
+    { 
+        $mul: { salary: 1.10 } 
+    }
+);
+
+-- Total Spending Per Customer
+db.orders.aggregate([
+    {
+        $group: {
+            _id: "$customerName",
+            totalSpent: { $sum: "$totalAmount" },
+            orderCount: { $sum: 1 }
+        }
+    },
+    {
+        $sort: { totalSpent: -1 }
+    }
+]);
+
+-- Customers with More Than 5 Orders
+db.orders.aggregate([
+    {
+        $group: {
+            _id: "$customerName",
+            orderCount: { $sum: 1 }
+        }
+    },
+    {
+        $match: { 
+            orderCount: { $gt: 5 } 
+        }
+    },
+    {
+        $project: {
+            customerName: "$_id",
+            orderCount: 1,
+            _id: 0
+        }
+    }
+]);
+
+-- Orders with Items Priced Over 50,000
+db.orders.find({ 
+    "items.price": { $gt: 50000 } 
+}).pretty();
+
+-- Most Frequently Purchased Product
+db.orders.aggregate([
+    { 
+        $unwind: "$items" 
+    },
+    {
+        $group: {
+            _id: "$items.product",
+            totalQuantity: { $sum: "$items.qty" },
+            timesOrdered: { $sum: 1 }
+        }
+    },
+    { 
+        $sort: { totalQuantity: -1 } 
+    },
+    { 
+        $limit: 1 
+    },
+    {
+        $project: {
+            product: "$_id",
+            totalQuantity: 1,
+            timesOrdered: 1,
+            _id: 0
+        }
+    }
+]);
+
+-- Employees Whose Name Starts with A or M
+db.employees.find({
+    $or: [
+        { name: { $regex: '^A', $options: 'i' } },
+        { name: { $regex: '^M', $options: 'i' } }
+    ]
+}).pretty();
+
+
+--  Year-Wise Total Revenue
+db.orders.aggregate([
+    {
+        $group: {
+            _id: { 
+                year: { $year: "$orderDate" } 
+            },
+            yearlyRevenue: { 
+                $sum: "$totalAmount" 
+            },
+            totalOrders: { 
+                $sum: 1 
+            }
+        }
+    },
+    { 
+        $sort: { "_id.year": 1 } 
+    },
+    {
+        $project: {
+            year: "$_id.year",
+            yearlyRevenue: 1,
+            totalOrders: 1,
+            _id: 0
+        }
+    }
+]);
