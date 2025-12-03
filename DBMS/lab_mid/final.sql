@@ -764,3 +764,134 @@ END;
 /
 ------------------------------------------------------------------------MONGODB-----------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------
+--create database
+use SchoolDB
+
+--create collections
+db.createCollection("Students")
+db.createCollection("Courses")
+
+-- Insert documents into Students
+db.Students.insertMany([
+  {
+    _id: 1,
+    name: "Alice",
+    age: 20,
+    scores: { math: 85, science: 90 }
+  },
+  {
+    _id: 2,
+    name: "Bob",
+    age: 22,
+    scores: { math: 78, science: 82 }
+  },
+  {
+    _id: 3,
+    name: "Charlie",
+    age: 21,
+    scores: { math: 92, science: 88 }
+  },
+  {
+    _id: 4,
+    name: "Daisy",
+    age: 23,
+    scores: { math: 68, science: 74 }
+  }
+]);
+
+-- Insert documents into Courses
+db.Courses.insertMany([
+  {
+    _id: 101,
+    courseName: "Mathematics",
+    instructor: "Dr. Smith",
+    studentsEnrolled: [1, 2, 3]
+  },
+  {
+    _id: 102,
+    courseName: "Science",
+    instructor: "Dr. Adams",
+    studentsEnrolled: [2, 3, 4]
+  }
+]);
+
+
+-- a) Student where math score ≥ 85 AND age < 22
+db.Students.findOne({
+  "scores.math": { $gte: 85 },
+  age: { $lt: 22 }
+})
+
+-- b) Course where studentsEnrolled includes 3 AND instructor is “Dr. Adams”
+db.Courses.findOne({
+  studentsEnrolled: 3,
+  instructor: "Dr. Adams"
+})
+
+
+-- a) Students with math ≥ 80 AND science < 90
+db.Students.find({
+  "scores.math": { $gte: 80 },
+  "scores.science": { $lt: 90 }
+})
+
+-- b) Students age ≤ 23 OR math score ≥ 85
+db.Students.find({
+  $or: [
+    { age: { $lte: 23 } },
+    { "scores.math": { $gte: 85 } }
+  ]
+})
+
+-- c) Students with science ≥ 80 AND (math < 75 OR age > 22)
+db.Students.find({
+  "scores.science": { $gte: 80 },
+  $or: [
+    { "scores.math": { $lt: 75 } },
+    { age: { $gt: 22 } }
+  ]
+})
+
+-- Increase Bob’s science score if math ≥ 75
+db.Students.updateOne(
+  { name: "Bob", "scores.math": { $gte: 75 } },
+  { $inc: { "scores.science": 1 } }
+)
+
+
+-- Increase math score by 5 for students with science < 80 AND age > 22
+db.Students.updateMany(
+  {
+    "scores.science": { $lt: 80 },
+    age: { $gt: 22 }
+  },
+  {
+    $inc: { "scores.math": 5 }
+  }
+)
+
+-- Remove student Daisy whose science ≤ 80
+db.Students.deleteOne({
+  name: "Daisy",
+  "scores.science": { $lte: 80 }
+})
+
+-- Remove courses where studentsEnrolled includes 2 OR instructor is “Dr. Smith”
+db.Courses.deleteMany({
+  $or: [
+    { studentsEnrolled: 2 },
+    { instructor: "Dr. Smith" }
+  ]
+})
+
+
+-- Drop Students collection
+db.Students.drop()
+
+-- Drop Courses collection
+db.Courses.drop()
+
+
+-- Delete SchoolDB database
+use admin
+db.getSiblingDB("SchoolDB").dropDatabase()
