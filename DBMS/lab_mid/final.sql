@@ -1177,3 +1177,51 @@ db.books.findOneAndUpdate(
 
 Find a Book by Title and Delete It
 db.books.findOneAndDelete({ "title": "The Great Gatsby" });
+
+
+-------------------------------paper ques:02 (triggers) --------------------------------
+create or replace trigger prevent_negative_values
+before insert or update on products
+for each row
+declare
+    old_stock NUMBER;
+begin
+    if :NEW.price <= 0 or :NEW.stock_quantity <= 0 then
+        raise_application_error(-20001, 'Product price or quantity can not be negative or 0');
+        
+    end if;
+    
+    if :NEW.stock_quantity < 5 then
+        raise_application_error(-20002, 'The product is going out of stock');
+    end if;
+    
+    if updating then
+        old_stock := :OLD.stock_quantity ;
+        if :NEW.stock_quantity < (old_stock *0.5) then
+           RAISE_APPLICATION_ERROR(-20003,
+                'Stock reduction exceeds allowed limit (50%)');
+        end if;
+    end if;
+    
+    if inserting then
+        :new.subtotal := :new.price * :new.stock_quantity;
+    elsif updating then
+        if new.subtotal <> old.subtotal then
+            RAISE_APPLICATION_ERROR(-20004,
+                'This field cannot be updated manually');
+        end if;
+        :new.subtotal := :new.price * :new.stock_quantity;
+        
+    end if;
+    
+    if inserting then
+        :new.created_by := USER;
+    end if;
+    
+    if updating then
+        :new.updated_by := USER;
+    end if;
+    
+    :new.last_updated := sysdate;
+    
+end;
