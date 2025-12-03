@@ -1,3 +1,205 @@
+------------------------------------------------------------------------------------------------- SQL commands -------------------------------------------------------------------------------------
+-- select all the employees whose salary is greater than the avg salary
+select * from employees;
+select avg(salary) from employees;
+select * from employees where salary > (select avg(salary) from employees);
+
+-- Scalar sub query
+-- returns always just one row and one column
+--like the above one
+select e.* from employees e join (select avg(salary)sal from employees) avg_sal
+on e.salary > avg_sal.sal;
+
+-- multiple row subquery 
+--1. if a subquery returns multiple rows and multiple columns
+--2. if a subquery returns only 1 column and multiple rows
+--Q. Find the employees who earn the highest salary in ech department
+select dept_id, max(salary) from employees group by(dept_id);
+select e.emp_name, e.salary, d.dept_name from employees e join departments d on e.dept_id = d.dept_id where (e.dept_id, e.salary) in (select dept_id, max(salary) from employees group by(dept_id));
+
+--same query using no join:
+select e.emp_id, e.emp_name, e.salary, 
+(select d.dept_name from departments d where e.dept_id = d.dept_id) dept_name
+from employees e 
+where(e.dept_id, e.salary) in (select dept_id, max(salary) from employees group by(dept_id));
+
+-- single column and multiple row subquery:
+--Q: find the department who does not have any employee
+select distinct dept_id from employees;
+select dept_id, dept_name from departments where dept_id not in
+(select distinct dept_id from employees);
+
+-- Correlated subqueries:
+-- a subquery related to the outer query
+--Q: Find the employees in each department who earn more than the average salary in that department
+select avg(salary) as avg_salary from employees group by(dept_id);
+select e.* from employees e where e.salary > 
+(select avg(salary) as avg_salary from employees where dept_id = e.dept_id);
+-- same thing using JOIN
+select e.* from employees e 
+join(select dept_id, avg(salary) as avg_salary from employees group by(dept_id)) avg_table
+on e.dept_id = avg_table.dept_id
+where e.salary > avg_table.avg_salary;
+
+--Q: find departments who do not have any employees using the correlated queries
+select 1 from employees where dept_id = 3;
+
+select d.* from departments d 
+where not exists (select 1 from employees e where e.dept_id = d.dept_id);
+
+--using join for the same thing
+select d.*, e.* from departments d left join employees e on d.dept_id = e.dept_id where e.emp_id is NULL;
+
+-- using subquery in select clause
+--Q: fetch all employee details and add remakrs to those employees who earn more than the avg pay
+select e.*, case when e.salary > (select avg(salary) from employees)
+            then 'Higher than average'
+            else null
+            end
+            as remarks 
+from employees e; -- not recommended
+
+--alternative:
+select e.*, case when e.salary > avg_sal.sal
+            then 'Higher than average'
+            else null
+            end
+            as remarks 
+from employees e cross join (select avg(salary) sal from employees) avg_sal;
+
+--select query in the having clause:
+-- HAVING claused only used with aggregate functions and with group by(or even without it), 
+-- where is used without group by 
+--Q: Find departments where the average salary is above 5000:
+-- with group by function
+select dept_id, avg(salary) as avg_salary
+from employees group by(dept_id)
+having avg(salary) > 5000;
+
+--without group by:
+--Q: Check if the total salary of all employees is above 100000:
+select sum(salary) as total_salary from employees having sum(salary) > 10000;
+-- Having clause with a subquery
+--Q: Find the stores who have sold more units than the average units sold by all stores(justto see the syntax, not a part of my real db)
+select store_name, sum(quantity) 
+from sales
+group by(store_name) 
+having sum(quantity) > (select avg(quantity) from sales);
+
+
+-- INSERT using subqueries
+--Q: insert data to employee history table. Make sure not to insert duplicate records
+insert into employee_history
+select e.id, e,name, d.dept_name, e.salary, d.location
+from employees e join departments d on e.dept_id = d.dept_id
+where not exists(
+                select 1 from employee_history eh where eh.emp_id = e.emp_id
+);
+
+-- UPDATE using subqueries
+--Q: Give 10% increment to all employees in Bangalore location based on the max salary
+--  earned by an employee in each department. Only consider employees in employee_history table
+update employee e
+set salary = (select max(salary) + (max(salary) * 0.1) from employee_history eh where eh.dept_name = e.dept_name)
+where e.dept_name in (select dept_name from departments where location = 'Bangalore')
+and e.emp_id in (select emp_id from employee_history);
+ 
+ 
+--DELETE using subqueries:
+--Q: Delete all departments who donot have any employees
+delete from departments where dept_id in 
+(
+select dept_id from departments d where not exists(
+select 1 from employees  e where e.dept_id = d.dept_id
+)
+);
+select * from employees;
+select * from departments;
+
+-------------------------------------------------------------PRACTICE------------------------------------------------------------
+--Select EMPLOYEE_ID, FIRST_NAME, SALARY from EMPLOYEES where salary greater than or equal to
+--10000 and less than or equal to 12000
+SELECT emp_id, emp_name, salary 
+FROM employees
+WHERE salary BETWEEN 10000 AND 12000;
+
+select * from employees 
+where emp_name like '_a%';
+
+select * from employees order by(salary) desc;
+
+select * from employees;
+select * from employees where salary < any(select salary from employees where job_id = 'PU_CLERK');
+--selecting the employees whose salary is greater than PU clerks and they are not PU clerks themselves
+select first_name, last_name, salary, job_id 
+from employees
+where salary > all(
+                   select salary from employees
+                   where job_id = 'PU_CLERK') 
+                   and job_id <> 'PU_CLERK';
+                   
+select * from jobs;
+
+select salary from (
+select salary from employees order by salary desc
+) where rownum <= 5;
+
+select * from departments;
+select * from locations;
+select * from regions;
+
+SELECT
+e.employee_id,
+e.first_name,
+e.last_name,
+(SELECT job_title FROM jobs WHERE job_id = e.job_id) AS job_title,
+(SELECT department_name FROM departments WHERE department_id = e.department_id)
+AS department_name,
+(SELECT city FROM locations WHERE location_id = d.location_id) AS
+department_location,
+(SELECT region_name FROM regions WHERE region_id = r.region_id) AS region_name
+FROM
+employees e,
+departments d,
+locations l,
+regions r
+WHERE
+e.department_id = d.department_id
+AND d.location_id = l.location_id;
+
+SELECT
+  e.employee_id,
+  e.first_name,
+  e.last_name,
+  j.job_title,
+  d.department_name,
+  l.city AS department_location,
+  r.region_name
+FROM employees e
+JOIN jobs j ON e.job_id = j.job_id
+JOIN departments d ON e.department_id = d.department_id
+JOIN locations l ON d.location_id = l.location_id
+JOIN regions r ON region_id = r.region_id;
+
+
+--------------------------------------------self-join------------------------------------
+--employees and managers who are in the same table
+--fetch all the employees along with their managers
+select e.emp_name, e.emp_id, m.emp_name as manager_name, m.emp_id as manager_id
+from employees e
+join employees m on e.emp_id = m.emp_id;
+
+--Finding Pairs of Employees in Same Department
+select e1.emp_name as employee, e2.emp_name as colleague
+from employees e1 
+inner join employees e2
+on e1.dept_id = e2.dept_id
+and e1.emp_id <> e2.emp_id
+and e1.emp_id < e2.emp_id; --- for unique pair only(eliminating duplication)
+
+
+
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------PL-SQL---------------------------------------------------------------------------------------------------
 set serveroutput on;
