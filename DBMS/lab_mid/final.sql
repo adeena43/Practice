@@ -895,3 +895,83 @@ db.Courses.drop()
 -- Delete SchoolDB database
 use admin
 db.getSiblingDB("SchoolDB").dropDatabase()
+
+db.getSiblingDB("SchoolDB").dropDatabase()
+db.books.countDocuments()
+db.books.countDocuments({ &quot;publication_year&quot;: { &quot;$gt&quot;: 2000 } });
+db.books.find().sort({ &quot;publication_year&quot;: 1 });
+db.books.find().sort({ &quot;publication_year&quot;: -1, &quot;title&quot;: 1 });
+db.books.find().limit(5);
+db.books.find().skip(3);
+db.books.find().skip(5).limit(5);
+-- Aggregate functions:
+Find the Average Publication Year of All Books
+db.books.aggregate([
+  { 
+    "$group": { 
+      "_id": null, 
+      "avgPublicationYear": { "$avg": "$publication_year" } 
+    } 
+  }
+])
+
+Group by Genre and Count Books in Each Genre
+db.books.aggregate([
+  { 
+    "$group": { 
+      "_id": "$genre", 
+      "count": { "$sum": 1 } 
+    } 
+  }
+])
+
+
+Sort Genres by Number of Books in Descending Order
+db.books.aggregate([
+  { 
+    "$group": { 
+      "_id": "$genre", 
+      "count": { "$sum": 1 } 
+    } 
+  },
+  { 
+    "$sort": { "count": -1 } 
+  }
+])
+
+
+Return Only Title and Author
+db.books.find({}, { "title": 1, "author": 1, "_id": 0 })
+    
+Exclude ISBN Field
+db.books.find({}, { "ISBN": 0 })
+
+Create a Text Index
+db.books.createIndex({ "title": "text", "author": "text" })
+Creates a text index on title and author for performing text searches.
+
+Search for Books with the Word "Road" in Title or Author
+db.books.find({ "$text": { "$search": "Road" } })
+
+Find Books with Titles Starting with "The"
+db.books.find({ "title": { "$regex": "^The", "$options": "i" } })
+
+Find Books by Authors with Last Name "Lee"
+db.books.find({ "author": { "$regex": "Lee$", "$options": "i" } })
+
+Increase the Rating of All Books by 1
+db.books.updateMany({}, { "$inc": { "rating": 1 } })
+
+Decrease the Publication Year by 5 for a Specific Book
+db.books.updateOne({ "title": "1984" }, { "$inc": { "publication_year": -5 } })
+
+Find a Book by Title and Update Its Genre
+db.books.findOneAndUpdate(
+  { "title": "The Great Gatsby" },
+  { "$set": { "genre": "Classic" } },
+  { "returnNewDocument": true }
+);
+
+
+Find a Book by Title and Delete It
+db.books.findOneAndDelete({ "title": "The Great Gatsby" });
